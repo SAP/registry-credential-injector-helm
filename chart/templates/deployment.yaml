@@ -112,4 +112,4 @@ spec:
       - name: tls
         secret:
           defaultMode: 420
-          secretName: {{ include "registry-credential-injector.fullname" . }}-{{ ternary "tls-managed" "tls
+          secretName: {{ include "registry-credential-injector.fullname" . }}-{{ ternary "tls-managed" "tls" .Values.webhook.certManager.enabled }}
