@@ -65,7 +65,7 @@ data:
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: regcred-injector
+  name: {{ include "registry-credential-injector.fullname" . }}
   labels:
     {{- include "registry-credential-injector.labels" . | nindent 4 }}
   {{- if .Values.webhook.certManager.enabled }}
