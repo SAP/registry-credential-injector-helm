@@ -102,8 +102,12 @@ spec:
         args:
         - -tls-key-file=/app/etc/tls/tls.key
         - -tls-cert-file=/app/etc/tls/tls.crt
-        - -default-pull-secret={{ .Values.defaultPullSecret }}
-        - -v={{ .Values.logLevel }}
+        {{- with .Values.defaultPullSecret }}
+        - -default-pull-secret={{ . }}
+        {{- end }}
+        {{- with .Values.logLevel }}
+        - -v={{ . }}
+        {{- end }}
         volumeMounts:
         - mountPath: /app/etc/tls
           name: tls
