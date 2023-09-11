@@ -8,8 +8,11 @@ concurrency: release-${{ github.event.release.tag_name }}
 
 env:
   HELM_VERSION: v3.11.3
+  SEMVER_VERSION: 3.4.0
   REGISTRY: ghcr.io
   CHART_DIRECTORY: chart
+  # COP_REPOSITORY:
+  # COP_CHART_BASE_DIRECTORY:
 
 defaults:
   run:
@@ -107,7 +110,7 @@ jobs:
           "$upload_url?name=$(basename $file)"
 
     - name: Upload index
-      uses: actions/upload-pages-artifact@v1
+      uses: actions/upload-pages-artifact@v2
       with:
         path: index
 
@@ -145,4 +148,108 @@ jobs:
         file=$chart_name-${{ github.event.release.tag_name }}.tgz
         repository=$REGISTRY/${{ github.repository }}
         helm --registry-config $RUNNER_TEMP/helm-config.json push $file oci://${repository,,}
+
+  update-cop:
+    name: Update component operator
+    runs-on: ubuntu-22.04
+    needs: validate
+
+    steps:
+    - name: Prepare
+      id: prepare
+      run: |
+        cop_repository=$COP_REPOSITORY
+        if [ -z "$cop_repository" ]; then
+          cop_repository=${GITHUB_REPOSITORY/-helm/-cop}
+        fi
+        echo "cop_repository=$cop_repository" >> $GITHUB_OUTPUT
+
+        cop_chart_base_directory=$COP_CHART_BASE_DIRECTORY
+        if [ -z "$cop_chart_base_directory" ]; then
+          cop_chart_base_directory=pkg/operator/data/charts
+        fi
+        echo "cop_chart_base_directory=$cop_chart_base_directory" >> $GITHUB_OUTPUT
+
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Checkout component operator repository
+      uses: actions/checkout@v3
+      with:
+        repository: ${{ steps.prepare.outputs.cop_repository }}
+        path: cop-repository
+        token: ${{ secrets.WORKFLOW_USER_GH_TOKEN }}
+
+    - name: Setup semver
+      uses: ./.github/actions/setup-semver
+      with:
+        version: ${{ env.SEMVER_VERSION }}
+        install-directory: ${{ runner.temp }}/bin
+
+    - name: Update component operator repository
+      id: update
+      run: |
+        chart_name=$(yq .name $CHART_DIRECTORY/Chart.yaml)
+
+        cd cop-repository
+        cop_chart_base_directory=${{ steps.prepare.outputs.cop_chart_base_directory }}
+
+        old_version=$(yq .version $cop_chart_base_directory/$chart_name/Chart.yaml)
+        if [ "$(semver validate ${old_version/#[vV]/_})" != valid ]; then
+          >&2 echo "Found invalid current chart version ($old_version) in $cop_chart_base_directory/$chart_name/Chart.yaml)."
+          exit 1
+        fi
+
+        new_version=${{ github.event.release.tag_name }}
+        if [ "$(semver validate ${new_version/#[vV]/_})" != valid ]; then
+          >&2 echo "Invalid target chart version ($new_version)."
+          exit 1
+        fi
+
+        if [ $(semver compare $new_version $old_version) -lt 0 ]; then
+          echo "Target chart version ($new_version) is lower than current chart version ($old_version); skipping update."
+          exit 0
+        fi
+
+        version_bump=$(semver diff $new_version $old_version)
+        echo "Found chart version bump: $version_bump."
+        if [ "$version_bump" != major ] && [ "$version_bump" != minor ]; then
+          version_bump=patch
+        fi
+        echo "Performing component operator version bump: $version_bump ..."
+
+        echo "Updating chart ($cop_chart_base_directory/$chart_name) ..."
+        rm -rf $cop_chart_base_directory/$chart_name
+        cp -r ../$CHART_DIRECTORY $cop_chart_base_directory/$chart_name
+
+        if [ -z "$(git status --porcelain)" ]; then
+          echo "Nothing has changed; skipping update ..."
+          exit 0
+        fi
+
+        git config user.name "${{ vars.WORKFLOW_USER_NAME }}"
+        git config user.email "${{ vars.WORKFLOW_USER_EMAIL }}"
+        git add -A
+        git commit -F- <<END
+        Update chart (triggered by operator helm release $new_version)
+        Repository: ${{ github.repository }}
+        Release: ${{ github.event.release.tag_name }}
+        Commit: ${{ github.sha }}
+        END
+        git push
+
+        echo "version_bump=$version_bump" >> $GITHUB_OUTPUT
+
+        # add some safety sleep to overcome github race conditions
+        sleep 10s
+
+    - name: Release component operator repository
+      if: steps.update.outputs.version_bump != ''
+      uses: benc-uk/workflow-dispatch@v1
+      with:
+        repo: ${{ steps.prepare.outputs.cop_repository }}
+        workflow: release.yaml
+        ref: main
+        token: ${{ secrets.WORKFLOW_USER_GH_TOKEN }}
+        inputs: '{ "version-bump": "${{ steps.update.outputs.version_bump }}" }'
 
