@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   registry-credential-injector:
   - apiVersion: v2
+    appVersion: v0.4.68
+    created: "2026-01-19T07:22:45.529280589Z"
+    description: A Helm chart for https://github.com/sap/registry-credential-injector
+    digest: cadbc8ba70983705b5424108cd80e7cfa579834ba9452298fc583e15b0261734
+    name: registry-credential-injector
+    type: application
+    urls:
+    - https://github.com/SAP/registry-credential-injector-helm/releases/download/0.4.65/registry-credential-injector-0.4.65.tgz
+    version: 0.4.65
+  - apiVersion: v2
     appVersion: v0.4.67
     created: "2026-01-12T07:22:52.859213496Z"
     description: A Helm chart for https://github.com/sap/registry-credential-injector
@@ -651,4 +661,4 @@ entries:
     urls:
     - https://github.com/SAP/registry-credential-injector-helm/releases/download/0.4.0/registry-credential-injector-0.4.0.tgz
     version: 0.4.0
-generated: "2026-01-12T07:22:52.858612559Z"
+generated: "2026-01-19T07:22:45.528717628Z"
