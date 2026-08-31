@@ -1,6 +1,6 @@
 # registry-credential-injector
 
-![Version: 0.4.91](https://img.shields.io/badge/Version-0.4.91-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.4.96](https://img.shields.io/badge/AppVersion-v0.4.96-informational?style=flat-square)
+![Version: 0.4.92](https://img.shields.io/badge/Version-0.4.92-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v0.4.97](https://img.shields.io/badge/AppVersion-v0.4.97-informational?style=flat-square)
 
 A Helm chart for https://github.com/sap/registry-credential-injector
 
